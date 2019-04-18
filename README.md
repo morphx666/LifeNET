@@ -7,3 +7,5 @@ A VB.NET implementation of the Game of Life
 - Paste new shapes using boolean logic operators
 - Rotate shapes
 - Design and save your own shapes
+
+Press `[SPACE]` bar to start/stop
