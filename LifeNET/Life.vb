@@ -77,6 +77,12 @@ Public Class Life
         End Set
     End Property
 
+    Public ReadOnly Property WorldSize As Size
+        Get
+            Return mWorldSize
+        End Get
+    End Property
+
     Public ReadOnly Property DragBitmap() As Bitmap
         Get
             Return dragBPM

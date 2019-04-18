@@ -21,7 +21,7 @@ Public Class FormMain
 
     Private lifeEngine As Life
 
-    Private Sub FormMain_FormClosing(sender As Object, e As System.Windows.Forms.FormClosingEventArgs) Handles Me.FormClosing
+    Private Sub FormMain_FormClosing(sender As Object, e As FormClosingEventArgs) Handles Me.FormClosing
         cancelLoadLibrary = True
         While isLoadingLibrary
             Application.DoEvents()
@@ -40,15 +40,46 @@ Public Class FormMain
         topPos = MenuMainFile.Height + 6
         worldOffsetFrom = New Point(0, 0)
 
-        lifeEngine = New Life(New Size(100, 100), 12)
-        lifeEngine.WorldOffset = New Point(0, topPos)
-        AddHandler lifeEngine.Update, Sub() Me.Invalidate()
+        WorldSettings(True)
 
         Dim loadShapesThread As Thread = New Thread(AddressOf LoadShapesLibrary)
         loadShapesThread.Start()
     End Sub
 
-    Private Sub FormMain_KeyDown(sender As Object, e As System.Windows.Forms.KeyEventArgs) Handles Me.KeyDown
+    Private Sub WorldSettings(useDefaults As Boolean)
+        Dim cols As Integer = 80
+        Dim rows As Integer = 60
+
+        If Not useDefaults Then
+            If lifeEngine IsNot Nothing Then
+                cols = lifeEngine.WorldSize.Width
+                rows = lifeEngine.WorldSize.Height
+
+                lifeEngine.Reset()
+                lifeEngine = Nothing
+            End If
+
+            Using frm As New FormWorldSettings()
+                frm.TextBoxColumns.Text = cols.ToString()
+                frm.TextBoxRows.Text = rows.ToString()
+
+                frm.ShowDialog()
+
+                cols = Integer.Parse(frm.TextBoxColumns.Text)
+                rows = Integer.Parse(frm.TextBoxRows.Text)
+            End Using
+        End If
+
+        lifeEngine = New Life(New Size(cols, rows), 12) With {
+            .WorldOffset = New Point(0, topPos)
+        }
+        AddHandler lifeEngine.Update, Sub() Me.Invalidate()
+        Me.Invalidate()
+    End Sub
+
+    Private Sub FormMain_KeyDown(sender As Object, e As KeyEventArgs) Handles Me.KeyDown
+        If lifeEngine Is Nothing Then Exit Sub
+
         ctrlIsDown = e.Control
 
         Select Case e.KeyCode
@@ -108,7 +139,9 @@ Public Class FormMain
         ctrlIsDown = e.Control
     End Sub
 
-    Private Sub FormMain_MouseDown(sender As Object, e As System.Windows.Forms.MouseEventArgs) Handles Me.MouseDown
+    Private Sub FormMain_MouseDown(sender As Object, e As MouseEventArgs) Handles Me.MouseDown
+        If lifeEngine Is Nothing Then Exit Sub
+
         Dim p As Point = lifeEngine.ScreenToWorld(e.X, e.Y)
         If p.X < 0 OrElse p.Y < 0 Then Exit Sub
 
@@ -132,7 +165,9 @@ Public Class FormMain
         End Select
     End Sub
 
-    Private Sub FormMain_MouseMove(sender As Object, e As System.Windows.Forms.MouseEventArgs) Handles Me.MouseMove
+    Private Sub FormMain_MouseMove(sender As Object, e As MouseEventArgs) Handles Me.MouseMove
+        If lifeEngine Is Nothing Then Exit Sub
+
         If e.X < lifeEngine.WorldOffset.X OrElse e.Y < lifeEngine.WorldOffset.Y Then Exit Sub
 
         Select Case e.Button
@@ -158,12 +193,14 @@ Public Class FormMain
         End Select
     End Sub
 
-    Private Sub FormMain_MouseUp(sender As Object, e As System.Windows.Forms.MouseEventArgs) Handles Me.MouseUp
+    Private Sub FormMain_MouseUp(sender As Object, e As MouseEventArgs) Handles Me.MouseUp
         mouseIsDown = False
         Me.Cursor = Cursors.Default
     End Sub
 
-    Private Sub FormMain_MouseWheel(sender As Object, e As System.Windows.Forms.MouseEventArgs) Handles Me.MouseWheel
+    Private Sub FormMain_MouseWheel(sender As Object, e As MouseEventArgs) Handles Me.MouseWheel
+        If lifeEngine Is Nothing Then Exit Sub
+
         If ctrlIsDown Then
             If e.Delta > 0 Then
                 lifeEngine.CellSize += 1
@@ -173,7 +210,9 @@ Public Class FormMain
         End If
     End Sub
 
-    Private Sub FormMain_Paint(sender As Object, e As System.Windows.Forms.PaintEventArgs) Handles Me.Paint
+    Private Sub FormMain_Paint(sender As Object, e As PaintEventArgs) Handles Me.Paint
+        If lifeEngine Is Nothing Then Exit Sub
+
         Dim g As Graphics = e.Graphics
 
         g.ScaleTransform(zoomLevel, zoomLevel)
@@ -197,11 +236,11 @@ Public Class FormMain
         End If
     End Sub
 
-    Private Sub MenuMainFileExit_Click(sender As System.Object, e As System.EventArgs) Handles MenuMainFileExit.Click
+    Private Sub MenuMainFileExit_Click(sender As Object, e As EventArgs) Handles MenuMainFileExit.Click
         Me.Close()
     End Sub
 
-    Private Sub MenuMainFileOpen_Click(sender As System.Object, e As System.EventArgs) Handles MenuMainFileOpen.Click
+    Private Sub MenuMainFileOpen_Click(sender As Object, e As EventArgs) Handles MenuMainFileOpen.Click
         Using dlg As OpenFileDialog = New OpenFileDialog()
             dlg.AutoUpgradeEnabled = True
             dlg.CheckFileExists = True
@@ -220,8 +259,8 @@ Public Class FormMain
         End Using
     End Sub
 
-    Private Sub MenuMainFileNew_Click(sender As System.Object, e As System.EventArgs) Handles MenuMainFileNew.Click
-        lifeEngine.Reset()
+    Private Sub MenuMainFileNew_Click(sender As Object, e As EventArgs) Handles MenuMainFileNew.Click
+        WorldSettings(False)
     End Sub
 
     Private Sub LoadShapesLibrary()
@@ -229,20 +268,21 @@ Public Class FormMain
 
         Dim data As String
         Dim shapes() As IO.FileInfo = New IO.DirectoryInfo(GetShapesDirectory()).GetFiles("*.cells")
+        Dim tmpLifeEngine As New Life(New Size(200, 200), 10)
 
         For Each shapeFile As IO.FileInfo In shapes
             If cancelLoadLibrary Then Exit For
 
             data = IO.File.ReadAllText(shapeFile.FullName)
             If data.StartsWith("!") AndAlso data.Contains("O") AndAlso data.Contains("!Name:") Then
-                Me.Invoke(New MethodInvoker(Sub() AddMenuItem(shapeFile.FullName, data)))
+                Me.Invoke(New MethodInvoker(Sub() AddMenuItem(shapeFile.FullName, data, tmpLifeEngine)))
             End If
         Next
 
         isLoadingLibrary = False
     End Sub
 
-    Private Sub AddMenuItem(shapeFile As String, data As String)
+    Private Sub AddMenuItem(shapeFile As String, data As String, lifeEngine As Life)
         Dim mSubMenu As ToolStripMenuItem = Nothing
         Dim subMenuExists As Boolean = False
         Dim name As String
@@ -285,7 +325,7 @@ Public Class FormMain
         lifeEngine.StartInserting()
     End Sub
 
-    Private Sub MenuMainFileSave_Click(sender As System.Object, e As System.EventArgs) Handles MenuMainFileSave.Click
+    Private Sub MenuMainFileSave_Click(sender As System.Object, e As EventArgs) Handles MenuMainFileSave.Click
         Dim wasRunning = lifeEngine.IsRunning
         If wasRunning Then lifeEngine.IsRunning = False
 
@@ -323,7 +363,7 @@ Public Class FormMain
 
                         lifeEngine.SaveShape(shape, name, fileName)
 
-                        AddMenuItem(fileName, IO.File.ReadAllText(fileName))
+                        AddMenuItem(fileName, IO.File.ReadAllText(fileName), lifeEngine)
                     End If
                 End Using
             Catch ex As Exception
