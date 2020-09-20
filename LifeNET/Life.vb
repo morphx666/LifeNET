@@ -249,12 +249,10 @@ Public Class Life
         Dim w = mWorldSize.Width
         Dim h = mWorldSize.Height
 
-        Dim n As Integer
+        Dim n As Integer = If(mWorld(c)(r), -1, 0)
         For x As Integer = c - 1 To c + 1
             For y As Integer = r - 1 To r + 1
-                If x <> c OrElse y <> r Then
-                    n += If(mWorld((x + w) Mod w)((y + h) Mod h), 1, 0)
-                End If
+                n += If(mWorld((x + w) Mod w)((y + h) Mod h), 1, 0)
             Next
         Next
 
