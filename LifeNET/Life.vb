@@ -246,20 +246,31 @@ Public Class Life
     End Function
 
     Private Function CountNeighbors(c As Integer, r As Integer) As Integer
-        Dim w As Integer = mWorldSize.Width
-        Dim h As Integer = mWorldSize.Height
+        Dim w = mWorldSize.Width
+        Dim h = mWorldSize.Height
 
-        Dim n As Integer = If(mWorld(c)(r), -1, 0)
+        Dim n As Integer
         For x As Integer = c - 1 To c + 1
             For y As Integer = r - 1 To r + 1
-                n += If(mWorld((x + w) Mod w)((y + h) Mod h), 1, 0)
+                If x <> c OrElse y <> r Then
+                    n += If(mWorld((x + w) Mod w)((y + h) Mod h), 1, 0)
+                End If
             Next
         Next
 
         Return n
     End Function
 
-    ' World Rules
+    'Private Function CountNeighbors(c As Integer, r As Integer) As Integer
+    '    Dim n As Integer
+    '    For x As Integer = Math.Max(c - 1, 0) To Math.Min(c + 1, mWorldSize.Width - 1)
+    '        For y As Integer = Math.Max(r - 1, 0) To Math.Min(r + 1, mWorldSize.Height - 1)
+    '            If x <> c OrElse y <> r Then n += If(mWorld(x)(y), 1, 0)
+    '        Next
+    '    Next
+
+    '    Return n
+    'End Function
     Private Const k1 As Integer = 3
     Private Const k2 As Integer = k1 - 1
 
@@ -323,8 +334,6 @@ Public Class Life
                 EOL = vbLf
             ElseIf data.Contains(vbCr) Then
                 EOL = vbCr
-            Else
-                Throw New Exception("Unsupported EOL")
             End If
 
             lines = data.Split(New String() {EOL}, StringSplitOptions.RemoveEmptyEntries)
